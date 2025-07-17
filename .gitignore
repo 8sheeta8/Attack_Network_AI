@@ -1,0 +1,3 @@
+attack_env_ssh/controller/pcaps/
+*.pcap
+*.pcap:Zone.Identifier
