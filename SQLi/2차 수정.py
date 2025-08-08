@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 latent_dim = 100
 seq_len = 200  # SQL query 길이 고정
 vocab_size = 256  # byte 단위로 처리할 경우 256
-n_critic = 5  # Discriminator를 Generator보다 더 자주 학습
-lambda_gp = 10  # Gradient Penalty 가중치
+n_critic = 5  # D가 G보다 더 자주 학습
+lambda_gp = 10  # G 가중치
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -21,7 +21,6 @@ class SQLDataset(Dataset):
         df = pd.read_csv(csv_path)
         self.queries = df[df['Label'] == 1]['Query'].astype(str).tolist()
 
-        # Preprocessing: 바이트로 인코딩 후 패딩
         self.encoded = []
         for q in self.queries:
             b = list(q.encode('utf-8'))[:seq_len]
@@ -35,7 +34,7 @@ class SQLDataset(Dataset):
     def __getitem__(self, idx):
         return torch.tensor(self.encoded[idx], dtype=torch.float32)
 
-# 2. 모델 정의 (Generator / Discriminator)
+# 2. 모델 정의
 class Generator(nn.Module):
     def __init__(self):
         super().__init__()
@@ -64,13 +63,13 @@ class Discriminator(nn.Module):
         x = x.view(-1, seq_len * vocab_size)
         return self.net(x)
 
-# 3. Gradient Penalty 계산
+# 3. Gradient
 def compute_gradient_penalty(D, real_samples, fake_samples):
     batch_size = real_samples.size(0)
     alpha = torch.rand(batch_size, 1, 1).to(device)
     alpha = alpha.expand(real_samples.size())  # [batch_size, seq_len, vocab_size]
 
-    # 실제와 가짜 샘플 사이의 보간
+    # 실제와 가짜 샘플 사이의 보완
     interpolates = (alpha * real_samples + (1 - alpha) * fake_samples).requires_grad_(True)
     d_interpolates = D(interpolates)
 
